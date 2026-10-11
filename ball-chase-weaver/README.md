@@ -208,7 +208,7 @@ int picked = new BallHunt(follower, limelight, intake)
 | `new BallChaseFollower(follower, tracker, intake)` | `new BallChaseWeaver(follower, tracker, intake)` |
 | `new BallHunt(follower, limelight, intake)` | unchanged |
 | `tracker`, `setAllowedClasses`, `setMaxPickups`, `setTimeBudgetSec`, `start/update/abort/isDone/addTelemetry` | unchanged |
-| straight-line `TRAVEL` | Weaver bezier that routes around obstacles |
+| straight-line `TRAVEL` | one cost-ordered Weaver route through every remembered ball, around obstacles |
 | — | `addObstacle(Zone)` / `.avoid(zone)` |
 | — | `ChaseDriver`, `PickupHandler` |
 
@@ -224,9 +224,12 @@ SCAN    stop, settle, average a few Limelight frames taken after the stop and
         project each detection (tx, ty) to a FIELD position through the Pedro
         pose. Balls out of view stay in memory; balls that should have been
         visible and weren't get dropped.
-TRAVEL  Weaver plans a bezier from the current pose to APPROACH_DIST short of
-        the nearest remembered ball, facing it, routed around your obstacles.
-        Timeout or an unreachable target falls back to SCAN / CHASE.
+TRAVEL  Weaver plans ONE route through the APPROACH_DIST-short approach point
+        of EVERY remembered ball - visit order picked by Marrow's
+        TargetOrderer (distance weighted against turning; unreachable targets
+        dropped) - bent around your obstacles. A remembered ball that gets
+        within BREAK_TO_CHASE_IN while in view ends the route early (collect
+        en route). Timeout or a fully blocked plan falls back to SCAN / CHASE.
 TURN    in-place turn to face a close ball, or sweep when nothing is known.
 CHASE   camera-only final approach (aim on tx, range from ty) - no field
         position needed, so localization error stops mattering. Coasts
@@ -248,7 +251,8 @@ measurement procedure and coordinate sign conventions are in
 | `CAM_X_OFFSET`, `CAM_Y_OFFSET` | `BallTracker` | camera mount offset from robot center (forward +X, LEFT +Y, inches) |
 | `HFOV_DEG` / `VFOV_DEG` | `BallTracker` | camera field of view, used to drop out-of-view memory |
 | `MIN_CONF`, `MAX_STALENESS_MS` | `BallTracker` | detection gating; the 3A reports confidence 0-1, staleness in ms |
-| `APPROACH_DIST`, `MAX_PLAN_RANGE` | `BallChaseWeaver` | how short of the ball the plan stops; how far a ball may be to plan to it |
+| `APPROACH_DIST`, `MAX_PLAN_RANGE` | `BallChaseWeaver` | how short of the ball each approach point sits; how far a ball may be to plan to it |
+| `MAX_ROUTE_TARGETS`, `BREAK_TO_CHASE_IN` | `BallChaseWeaver` | cap on balls joined into one route (0 = all); in-view ball distance that ends the route early |
 | `FIELD_MIN` / `FIELD_MAX` | `BallChaseWeaver` | clip for planned coordinates - widen for a bigger field |
 | drive/turn/coast gains, search/pickup timing | `BallChaseWeaver` | everything the drivers read at point of use |
 

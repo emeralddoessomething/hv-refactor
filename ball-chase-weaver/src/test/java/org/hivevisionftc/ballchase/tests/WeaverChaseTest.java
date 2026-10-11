@@ -45,9 +45,9 @@ class WeaverChaseTest {
         BallChaseWeaver.SETTLE_MS, BallChaseWeaver.SCAN_MS, BallChaseWeaver.TRAVEL_TIMEOUT_MS,
         BallChaseWeaver.TURN_TIMEOUT_MS, BallChaseWeaver.SEARCH_STEP_DEG, BallChaseWeaver.PICKUP_DWELL_MS,
         BallChaseWeaver.COAST_MS, BallChaseWeaver.LOST_MS, BallChaseWeaver.MAX_PLAN_RANGE,
-        BallChaseWeaver.APPROACH_DIST, BallChaseWeaver.MIN_PLAN_LENGTH
+        BallChaseWeaver.APPROACH_DIST, BallChaseWeaver.MIN_PLAN_LENGTH, BallChaseWeaver.BREAK_TO_CHASE_IN
     };
-    private final int[] weaverTuneInt = {BallChaseWeaver.SEARCH_MAX_STEPS};
+    private final int[] weaverTuneInt = {BallChaseWeaver.SEARCH_MAX_STEPS, BallChaseWeaver.MAX_ROUTE_TARGETS};
 
     @BeforeEach
     void tune() {
@@ -64,6 +64,8 @@ class WeaverChaseTest {
         BallChaseWeaver.MAX_PLAN_RANGE = 40;
         BallChaseWeaver.APPROACH_DIST = 24;
         BallChaseWeaver.MIN_PLAN_LENGTH = 3;
+        BallChaseWeaver.BREAK_TO_CHASE_IN = 28;
+        BallChaseWeaver.MAX_ROUTE_TARGETS = 0;
 
         vision = new ScriptedVision();
         driver = new FakeChaseDriver(24, 24, 0.0);
@@ -83,7 +85,9 @@ class WeaverChaseTest {
         BallChaseWeaver.MAX_PLAN_RANGE = weaverTune[8];
         BallChaseWeaver.APPROACH_DIST = weaverTune[9];
         BallChaseWeaver.MIN_PLAN_LENGTH = weaverTune[10];
+        BallChaseWeaver.BREAK_TO_CHASE_IN = weaverTune[11];
         BallChaseWeaver.SEARCH_MAX_STEPS = weaverTuneInt[0];
+        BallChaseWeaver.MAX_ROUTE_TARGETS = weaverTuneInt[1];
         BallChaseWeaver.resetPathConfig();
     }
 
@@ -235,6 +239,71 @@ class WeaverChaseTest {
         double[] end = driver.planEnd();
         assertNotNull(end);
         assertEquals(24 + far - BallChaseWeaver.APPROACH_DIST, end[0], 1.0);
+    }
+
+    /* ---------------- route ordering ---------------- */
+
+    @Test
+    void routeVisitsTheTurnCheaperBallFirstEvenWhenNearerBallExists() {
+        // Nearest ball is 30" BEHIND the robot; a 60" ball sits dead ahead.
+        // TargetOrderer weighs distance against turning (turnCostWeight), so the
+        // ahead ball is visited first and the behind ball closes the route.
+        vision.clear();
+        BallChaseWeaver hunt = newHunt();
+        hunt.rememberBall(-6, 24); // 30" behind the start pose (24, 24, 0 rad)
+        hunt.rememberBall(84, 24); // 60" ahead
+
+        runUntil(hunt, State.TRAVEL, 3000);
+
+        PathResult plan = hunt.getLastPlan();
+        assertNotNull(plan, "both remembered balls go into one plan");
+        List<Point> visited = plan.getVisitedTargets();
+        assertEquals(2, visited.size(), "both remembered balls join the route");
+        assertEquals(60.0, visited.get(0).getX(), 0.5, "the turn-cheaper ahead ball is visited first");
+        assertTrue(plan.getUnvisitedTargets().isEmpty());
+
+        double[] end = driver.planEnd();
+        assertNotNull(end);
+        assertEquals(18.0, end[0], 0.5, "the route ends on the behind ball's approach point");
+        assertEquals(24.0, end[1], 0.5);
+    }
+
+    @Test
+    void maxTargetsCapsHowManyBallsJoinOneRoute() {
+        BallChaseWeaver.MAX_ROUTE_TARGETS = 2;
+        vision.clear();
+        BallChaseWeaver hunt = newHunt();
+        hunt.rememberBall(70, 24); // 46" ahead - past MAX_PLAN_RANGE, so the
+        hunt.rememberBall(24, 70); // empty camera cannot drop them as stale
+        hunt.rememberBall(70, 70); // diagonal
+
+        runUntil(hunt, State.TRAVEL, 3000);
+
+        PathResult plan = hunt.getLastPlan();
+        assertNotNull(plan);
+        assertEquals(3, hunt.getRemembered(), "all three balls survive the scan");
+        assertEquals(2, plan.getVisitedTargets().size(), "the cap keeps the third ball off this route");
+        assertEquals(1, plan.getUnvisitedTargets().size(), "and reports it as unvisited");
+    }
+
+    @Test
+    void aCloseInViewBallEndsTheRouteEarly() {
+        vision.clear();
+        BallChaseWeaver hunt = newHunt();
+        hunt.rememberBall(74, 24); // 50" ahead: past MAX_PLAN_RANGE, close enough to break after driving
+
+        runUntil(hunt, State.TRAVEL, 3000);
+        assertEquals(1, driver.followCalls, "the route was planned");
+
+        // Simulate driving up to the ball while the route is still running.
+        driver.x = 56; // ball now 18" ahead, dead in the camera cone
+        long deadline = System.currentTimeMillis() + 500;
+        while (System.currentTimeMillis() < deadline && hunt.getState() != State.CHASE) {
+            hunt.update();
+        }
+
+        assertEquals(State.CHASE, hunt.getState(), "a close in-view ball leaves the route");
+        assertEquals(1, driver.stopCalls, "the route is stopped, not run to its end");
     }
 
     /* ---------------- the Pedro seam ---------------- */

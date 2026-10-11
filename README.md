@@ -21,9 +21,10 @@ Pick the artifact that matches the Pedro Pathing version in your robot project. 
 > **Where BallChaseFollower went.** Straight-line travel can't plan around obstacles,
 > and the hybrid driver had no seam for another drivetrain, so development moved to
 > `ball-chase-weaver`. It keeps the same perception core and the same state machine,
-> replaces the TRAVEL leg with a [Marrow Weaver](https://github.com/Skeleton-Army/Marrow)
-> bezier, and adds obstacle zones, a `ChaseDriver` adapter interface and a
-> `PickupHandler`. `BallHunt` and every tracker verb are unchanged.
+> replaces the TRAVEL leg with one cost-ordered [Marrow Weaver](https://github.com/Skeleton-Army/Marrow)
+> route through every remembered ball that bends around obstacle zones, and adds a
+> `ChaseDriver` adapter interface and a `PickupHandler`. `BallHunt` and every tracker
+> verb are unchanged.
 
 ```gradle
 // TeamCode/build.gradle

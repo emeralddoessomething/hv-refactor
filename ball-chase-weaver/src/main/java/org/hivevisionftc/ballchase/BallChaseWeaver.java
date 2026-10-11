@@ -12,9 +12,13 @@
  *           stop, and project each detection (tx, ty) to a field position.
  *           Balls already in memory that are out of view stay; balls that
  *           should be visible but aren't get dropped.
- *   TRAVEL  Weaver plans a bezier from the current pose to APPROACH_DIST short
- *           of the nearest remembered ball, facing it, routed around obstacles.
- *           Timeout or an unreachable target falls back to SCAN / CHASE.
+ *   TRAVEL  Weaver plans ONE smooth route through the APPROACH_DIST-short
+ *           approach point of EVERY remembered ball - visit order chosen by
+ *           Marrow's TargetOrderer (distance weighted against turning, blocked
+ *           targets dropped) - bent around the obstacles you declared, and
+ *           Pedro follows it. A remembered ball that gets within
+ *           BREAK_TO_CHASE_IN while in view ends the route early (collect en
+ *           route); so do a timeout or a fully blocked plan -> SCAN / CHASE.
  *   TURN    In-place turn to face a close ball, or sweep when nothing is known.
  *   CHASE   Camera-only final approach (aim on tx, range from ty) - no field
  *           position needed, so localization error stops mattering. Coasts
@@ -83,6 +87,8 @@ public class BallChaseWeaver {
     public static double FIELD_MIN = 6.0; // field-coordinate clip; widen for bigger fields
     public static double FIELD_MAX = 138.0;
     public static double MIN_PLAN_LENGTH = 3.0; // shorter than this: turn in place instead
+    public static int MAX_ROUTE_TARGETS = 0; // balls per route; 0 = every remembered ball
+    public static double BREAK_TO_CHASE_IN = 28.0; // in-view ball closer than this ends the route early
     public static long TRAVEL_TIMEOUT_MS = 4000;
 
     /* ---- scan / search ---- */
@@ -463,30 +469,43 @@ public class BallChaseWeaver {
         }
     }
 
-    /** Ask Marrow Weaver for a bezier to the approach point, then hand it to the driver. */
+    /**
+     * Ask Marrow Weaver for one route through the approach point of every
+     * remembered ball. Inside generate(), TargetOrderer picks the visit order -
+     * cost = travel distance + turnCostWeight * heading change, the same idea a
+     * hand-rolled cost algo would brute-force - reachable targets win first,
+     * blocked ones drop out, then the obstacle avoider bends the curve. The
+     * first ball along the route becomes currentTarget so PICKUP knows what to
+     * clear even if the camera never locks.
+     */
     private void startTravel(Ball target, double heading) {
         double px = driver.x();
         double py = driver.y();
         double ph = driver.headingRad();
 
-        double ax = Range.clip(target.x - APPROACH_DIST * Math.cos(heading), FIELD_MIN, FIELD_MAX);
-        double ay = Range.clip(target.y - APPROACH_DIST * Math.sin(heading), FIELD_MIN, FIELD_MAX);
-
-        if (Math.hypot(ax - px, ay - py) < MIN_PLAN_LENGTH) {
-            startTurn(heading, State.CHASE); // zero-length path guard
-            return;
+        // Approach points: APPROACH_DIST back from each ball toward the robot,
+        // clipped to the field box (wall padding - the body stops short).
+        List<Point> route = new ArrayList<>();
+        List<Ball> routeBalls = new ArrayList<>();
+        for (Ball b : memory) {
+            double d = Math.hypot(b.x - px, b.y - py);
+            route.add(new Point(
+                    Range.clip(b.x - APPROACH_DIST * (b.x - px) / d, FIELD_MIN, FIELD_MAX),
+                    Range.clip(b.y - APPROACH_DIST * (b.y - py) / d, FIELD_MIN, FIELD_MAX)));
+            routeBalls.add(b);
         }
 
         PathResult plan;
         try {
             plan = Weaver.builder()
                     .start(new Point(px, py, ph))
-                    .end(new Point(ax, ay))
+                    .targets(route)
+                    .maxTargets(MAX_ROUTE_TARGETS) // builder reorders by default: TargetOrderer picks the order
                     .obstacles(obstacles)
                     .generate();
         } catch (RuntimeException e) {
-            // Planner refused (blocked target, degenerate geometry): fall back to
-            // the camera finish, which needs no field path at all.
+            // Planner refused (degenerate geometry): fall back to the camera
+            // finish, which needs no field path at all.
             startTurn(heading, State.CHASE);
             return;
         }
@@ -496,15 +515,36 @@ public class BallChaseWeaver {
             return;
         }
 
+        Point end = plan.getSegments().get(0).get(1.0);
+        if (Math.hypot(end.getX() - px, end.getY() - py) < MIN_PLAN_LENGTH) {
+            // Idle plan: every target was blocked - nothing to drive.
+            startTurn(heading, State.CHASE);
+            return;
+        }
+
+        currentTarget = firstAlong(plan, route, routeBalls);
+        if (currentTarget == null) currentTarget = target;
+
         lastPlan = plan;
         plans++;
         // Shortest-way heading change, so we never spin across the +-pi seam.
-        driver.follow(plan, ph + wrap(heading - ph));
+        // The plan ends on the last approach point, which shares its ball's bearing.
+        double endHeading = Math.atan2(end.getY() - py, end.getX() - px);
+        driver.follow(plan, ph + wrap(endHeading - ph));
         enter(State.TRAVEL);
     }
 
     private void doTravel() {
         pickup.stopPickup();
+        Ball close = breakToChaseBall();
+        if (close != null) {
+            // The route passed near a ball the camera can see: hand off now
+            // instead of driving past it. (This is the collect-en-route beat.)
+            driver.stop();
+            currentTarget = close;
+            startTurn(Math.atan2(close.y - driver.y(), close.x - driver.x()), State.CHASE);
+            return;
+        }
         if (!driver.isBusy()) {
             enter(State.CHASE);
         } else if (stateTimer.milliseconds() > TRAVEL_TIMEOUT_MS) {
@@ -696,6 +736,39 @@ public class BallChaseWeaver {
             }
         }
         return best;
+    }
+
+    /** Remembered ball within {@link #BREAK_TO_CHASE_IN} that the camera can see right now. */
+    private Ball breakToChaseBall() {
+        double px = driver.x();
+        double py = driver.y();
+        double ph = driver.headingRad();
+        Ball best = null;
+        double bestD = BREAK_TO_CHASE_IN;
+        for (Ball b : memory) {
+            double d = Math.hypot(b.x - px, b.y - py);
+            if (d <= bestD && BallTracker.inView(b.x, b.y, px, py, ph, MAX_PLAN_RANGE)) {
+                best = b;
+                bestD = d;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * The remembered ball behind a planned waypoint - plans copy their points, so
+     * match by coordinates. Returns null when the waypoint is not one of ours
+     * (or when the plan visited nothing, e.g. every target was blocked).
+     */
+    private Ball firstAlong(PathResult plan, List<Point> route, List<Ball> routeBalls) {
+        List<Point> visited = plan.getVisitedTargets();
+        if (visited.isEmpty()) return null;
+        Point first = visited.get(0);
+        for (int i = 0; i < route.size(); i++) {
+            Point p = route.get(i);
+            if (p.getX() == first.getX() && p.getY() == first.getY()) return routeBalls.get(i);
+        }
+        return null;
     }
 
     private static double wrap(double a) {

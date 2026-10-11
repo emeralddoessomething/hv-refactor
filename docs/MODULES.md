@@ -148,13 +148,15 @@ Without a confirmer, every dwell is credited (legacy behavior). Timeout is
 that matters: `TRAVEL` no longer drives a straight line. The scan projects
 every gated Limelight detection to a FIELD position through the Pedro pose,
 then [Marrow Weaver](https://github.com/Skeleton-Army/Marrow) turns the
-approach point into a cubic-bezier route that bends around the obstacles you
-declared, and Pedro Pathing 3 follows it.
+approach points of ALL remembered balls into ONE cubic-bezier route - visit
+order chosen by Marrow's `TargetOrderer`, distance weighted against turning,
+unreachable targets dropped - that bends around the obstacles you declared,
+and Pedro Pathing 3 follows it.
 
 | State | Behavior |
 |-------|----------|
 | `SCAN` | stop and settle, then average a few Limelight frames taken after the stop, projecting each detection (`tx`, `ty`) to a FIELD position via the drivetrain pose. Balls already in memory that are out of view stay; balls that should be visible but aren't get dropped. |
-| `TRAVEL` | Weaver plans a bezier from the current pose to `APPROACH_DIST` short of the nearest remembered ball, facing it, routed around `getObstacles()`. Timeout or a refused/degenerate plan falls back to `SCAN` / `CHASE` instead of stalling. |
+| `TRAVEL` | Weaver plans one route through the `APPROACH_DIST`-short approach point of every remembered ball (visit order from Marrow's `TargetOrderer`: distance vs turning, `MAX_ROUTE_TARGETS` caps it), routed around `getObstacles()`. A remembered ball inside `BREAK_TO_CHASE_IN` that the camera can see ends the route early; timeout or a refused/degenerate plan falls back to `SCAN` / `CHASE` instead of stalling. |
 | `TURN` | in-place turn to face a close ball, or sweep when nothing is known. |
 | `CHASE` | camera-only final approach (aim on `tx`, range from `ty`) — no field position needed, so localization error stops mattering. Coasts straight if the ball disappears right at the intake. |
 | `PICKUP` | stop, run the `PickupHandler`, clear that ball from memory, back to `SCAN`. |
