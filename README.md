@@ -47,6 +47,61 @@ If you use other versions, compatibility is not guaranteed.
 > **Package change.** Classes used to live in `org.firstinspires.ftc.teamcode`. They are now in
 > `org.hivevisionftc.ballchase` (`...ballchase.wrapper` for the verb API). Update your imports.
 
+## Beta testing (before the artifact is on Central)
+
+The artifact is not on Maven Central yet, so testers install it from source. Send this section to
+whoever is testing — it is self-contained.
+
+**1. Publish the library locally** (needs JDK 17+ and the Android SDK, the same setup that builds
+FtcRobotController):
+
+```bash
+git clone https://github.com/sidhuharjas/hvtest.git
+cd hvtest
+./gradlew :ball-chase-weaver:deployLocal   # -> org.hivevisionftc:ball-chase-weaver:1.0.0 in ~/.m2
+```
+
+**2. Two edits in your FtcRobotController project.** `build.dependencies.gradle`:
+
+```gradle
+repositories {
+    mavenLocal()
+    mavenCentral()
+    google()
+}
+```
+
+`TeamCode/build.gradle`:
+
+```gradle
+dependencies {
+    implementation project(':FtcRobotController')   // already there
+    implementation 'com.pedropathing:core:3.0.1'
+    implementation 'com.pedropathing:revhub:3.0.1'  // REV Hub drivetrain/localizer
+    implementation 'org.hivevisionftc:ball-chase-weaver:1.0.0'
+}
+```
+
+**3. OpModes.** Copy [`docs/examples/`](docs/examples/) into TeamCode and tune
+`SampleFollowerFactory` for your robot (motor/encoder names, pod offsets, ticks-to-inches, hub
+orientation). Hardware names are `limelight` and `intake` — edit the OpModes if yours differ.
+
+**4. Camera.** Upload `best_limelight3a_ssd_mobilenetv2_300x300.tflite` + `labels.txt` (Hive Vision
+repo, `neural-net/weights/`) at `http://limelight.local:5801`: Pipeline Type **Neural Detector**,
+runtime engine **CPU**, input **300 x 300**, threshold **0.35 - 0.45**. Confirm colored boxes
+appear on the stream before running anything.
+
+**5. Run.** `AutoBallHuntOpMode` first (the one-liner), then `ManualBallChaseOpMode` (the full
+loop) — add an obstacle with `hunt.addObstacle(new CircleZone(new Point(x, y), r))` to test
+avoidance.
+
+**Report back:**
+
+- a ✅/❌ for each state: `SCAN` → `TRAVEL` → `TURN` → `CHASE` → `PICKUP` (telemetry shows the state)
+- video of the run, especially whether the path visibly bends around the obstacle
+- every exception from the Driver Station, verbatim
+- field size, obstacle coordinates, and any tunables you had to change (the `BallChaseWeaver.*` statics)
+
 ## Usage
 
 ### Teleop (no odometry)
