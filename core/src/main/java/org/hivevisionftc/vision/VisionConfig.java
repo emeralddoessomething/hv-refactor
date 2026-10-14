@@ -1,5 +1,7 @@
 package org.hivevisionftc.vision;
 
+import androidx.annotation.NonNull;
+
 import java.util.Locale;
 
 /**
@@ -60,7 +62,12 @@ public class VisionConfig {
     /**
      * Whether to ignore confidence when filtering detections.
      */
-    public boolean ignoreConfidence = false;
+    private boolean ignoreConfidence = false;
+
+    /**
+     * The camera pipeline to use.
+     */
+    private int pipeline = 3;
 
     /**
      * Returns the camera tilt angle below horizontal in degrees.
@@ -222,18 +229,41 @@ public class VisionConfig {
         return this;
     }
 
+    /**
+     * Returns the camera pipeline to use.
+     *
+     * @return camera pipeline
+     */
+    public int getPipeline() {
+        return this.pipeline;
+    }
+
+    /**
+     * Sets the camera pipeline to use.
+     *
+     * @param v camera pipeline to use
+     * @return this
+     */
+    public VisionConfig pipeline(int v) {
+        this.pipeline = v;
+        return this;
+    }
+
+    @NonNull
     @Override
     public String toString() {
         return String.format(
                 Locale.ROOT,
                 "VisionConfig(camPitchDeg=%.3f, camHeight=%.3f, ballHeight=%.3f, camXOffset=%.3f, camYOffset=%.3f, "
-                        + "maxStalenessMs=%d, minConfidence=%.3f)",
+                        + "maxStalenessMs=%d, minConfidence=%.3f, ignoreConfidence=%b, pipeline=%d)",
                 camPitchDeg,
                 camHeight,
                 ballHeight,
                 camXOffset,
                 camYOffset,
                 maxStalenessMs,
-                minConfidence);
+                minConfidence,
+                ignoreConfidence,
+                pipeline);
     }
 }

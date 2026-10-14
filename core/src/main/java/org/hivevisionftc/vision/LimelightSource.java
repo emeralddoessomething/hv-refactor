@@ -11,8 +11,10 @@ import java.util.List;
 public class LimelightSource implements DetectionSource{
     private final Limelight3A limelight;
 
-    public LimelightSource(Limelight3A limelight) {
+    public LimelightSource(Limelight3A limelight, int pipeline) {
         this.limelight = limelight;
+        this.limelight.pipelineSwitch(pipeline);
+        this.limelight.start();
     }
 
     @Override

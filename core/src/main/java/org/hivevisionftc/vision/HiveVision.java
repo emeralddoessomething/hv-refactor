@@ -20,7 +20,7 @@ public class HiveVision {
     }
 
     public HiveVision(Limelight3A limelight, VisionConfig config) {
-        this(new LimelightSource(limelight), config);
+        this(new LimelightSource(limelight, config.getPipeline()), config);
     }
 
     public List<Detection> getRawDetections() {
@@ -65,7 +65,7 @@ public class HiveVision {
 
             for (Detection detection : detections) {
                 if (!allowedClasses.contains(detection.getBallClass())) continue; //Skip disallowed colors
-                if (!config.ignoreConfidence && detection.getConfidence() < config.getMinConfidence()) continue; // Skip low confidence detections
+                if (!config.ignoreConfidence() && detection.getConfidence() < config.getMinConfidence()) continue; // Skip low confidence detections
 
                 detectionList.add(getAbsolutePosition(detection, robotPose));
             }
