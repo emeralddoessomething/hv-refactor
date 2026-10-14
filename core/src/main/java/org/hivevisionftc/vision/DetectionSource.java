@@ -1,4 +1,4 @@
-package org.hivevisionftc;
+package org.hivevisionftc.vision;
 
 import java.util.List;
 

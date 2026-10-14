@@ -1,4 +1,4 @@
-package org.hivevisionftc;
+package org.hivevisionftc.vision;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;

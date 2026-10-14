@@ -1,4 +1,4 @@
-package org.hivevisionftc;
+package org.hivevisionftc.vision;
 
 public class Detection {
     private final BiobuzzClasses ballClass;

@@ -1,4 +1,4 @@
-package org.hivevisionftc;
+package org.hivevisionftc.vision;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 

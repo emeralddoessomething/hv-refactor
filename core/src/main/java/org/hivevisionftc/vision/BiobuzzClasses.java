@@ -1,4 +1,4 @@
-package org.hivevisionftc;
+package org.hivevisionftc.vision;
 
 public enum BiobuzzClasses {
     POLLEN(0),
