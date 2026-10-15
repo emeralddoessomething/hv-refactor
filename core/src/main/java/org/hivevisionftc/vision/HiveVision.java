@@ -1,13 +1,11 @@
 package org.hivevisionftc.vision;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-
 
 public class HiveVision {
     private final DetectionSource source;
@@ -59,6 +57,7 @@ public class HiveVision {
     public class DetectionList {
         private final List<Detection> detectionList;
         private FieldPose robotPose;
+
         private DetectionList() {
             detectionList = new ArrayList<>();
         }
@@ -88,13 +87,14 @@ public class HiveVision {
             robotPose = new FieldPose(robotX, robotY);
 
             for (Detection detection : detections) {
-                if (!allowedClasses.contains(detection.getBallClass())) continue; //Skip disallowed colors
-                if (!config.ignoreConfidence() && detection.getConfidence() < config.getMinConfidence()) continue; // Skip low confidence detections
+                if (!allowedClasses.contains(detection.getBallClass())) continue; // Skip disallowed colors
+                if (!config.ignoreConfidence() && detection.getConfidence() < config.getMinConfidence())
+                    continue; // Skip low confidence detections
 
                 detectionList.add(getAbsolutePosition(detection, robotPose));
             }
 
-           return this;
+            return this;
         }
 
         public DetectionList fetch(FieldPose robotPose) {
@@ -104,12 +104,8 @@ public class HiveVision {
 
         /** Sorts by straight-line distance from the robot's pose (closest first). */
         public DetectionList sortByDistance() {
-            detectionList.sort(Comparator.comparingDouble(a ->
-                    Math.hypot(
-                            a.getX() - robotPose.getX(),
-                            a.getY() - robotPose.getY()
-                    )
-            ));
+            detectionList.sort(Comparator.comparingDouble(
+                    a -> Math.hypot(a.getX() - robotPose.getX(), a.getY() - robotPose.getY())));
 
             return this;
         }
@@ -127,7 +123,8 @@ public class HiveVision {
         }
 
         public DetectionList sortByConfidence() {
-            detectionList.sort(Comparator.comparingDouble(Detection::getConfidence).reversed());
+            detectionList.sort(
+                    Comparator.comparingDouble(Detection::getConfidence).reversed());
             return this;
         }
 
@@ -156,9 +153,13 @@ public class HiveVision {
             return new ArrayList<>(detectionList);
         }
 
-        public int count()      { return detectionList.size(); }
-        public boolean didDetect() { return !detectionList.isEmpty(); }
+        public int count() {
+            return detectionList.size();
+        }
 
+        public boolean didDetect() {
+            return !detectionList.isEmpty();
+        }
 
         private double getDistance(double ty) {
             double angleGoalRag = Math.toRadians(config.getCamPitchDeg() + ty);
@@ -179,11 +180,7 @@ public class HiveVision {
             double x = relativePose.getX() * Math.cos(theta) - relativePose.getY() * Math.sin(theta);
             double y = relativePose.getX() * Math.sin(theta) + relativePose.getY() * Math.cos(theta);
 
-
-            return new FieldPose(
-                    robotPose.getX() + x,
-                    robotPose.getY() + y,
-                    0);
+            return new FieldPose(robotPose.getX() + x, robotPose.getY() + y, 0);
         }
 
         private Detection getAbsolutePosition(Detection detection, FieldPose robotPose) {

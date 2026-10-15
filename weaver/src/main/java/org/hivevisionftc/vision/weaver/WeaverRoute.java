@@ -10,10 +10,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
-
-import org.firstinspires.ftc.robotcore.external.hardware.camera.Camera;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.CameraName;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.hivevisionftc.vision.Detection;
 import org.hivevisionftc.vision.FieldPose;
 import org.hivevisionftc.vision.HiveVision;
@@ -41,6 +37,7 @@ public final class WeaverRoute implements Function<HiveVision.DetectionList, Pat
     private final List<Zone> obstacles;
     private int maxTargets;
     private boolean ordered = false;
+
     private WeaverRoute(FieldPose start) {
         this.start = start;
         obstacles = new ArrayList<>();
@@ -149,8 +146,7 @@ public final class WeaverRoute implements Function<HiveVision.DetectionList, Pat
         }
 
         // Marrow treats maxTargets(0) as "no cap", so it can be passed through unconditionally.
-        return builder
-                .start(new Point(from.getX(), from.getY(), from.getHeading()))
+        return builder.start(new Point(from.getX(), from.getY(), from.getHeading()))
                 .targets(toPoints(fieldDetections))
                 .maxTargets(maxTargets)
                 .obstacles(obstacles)

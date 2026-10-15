@@ -4,7 +4,7 @@ public enum BiobuzzClasses {
     POLLEN(0),
     NECTAR_RED(1),
     NECTAR_BLUE(2),
-    UNKNOWN(Integer.MAX_VALUE); //For safety
+    UNKNOWN(Integer.MAX_VALUE); // For safety
     private final int id;
 
     BiobuzzClasses(int id) {

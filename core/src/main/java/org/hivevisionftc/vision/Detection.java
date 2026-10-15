@@ -47,5 +47,4 @@ public class Detection {
     public double getArea() {
         return area;
     }
-
 }

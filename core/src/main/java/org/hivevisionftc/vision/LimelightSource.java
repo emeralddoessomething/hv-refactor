@@ -3,12 +3,11 @@ package org.hivevisionftc.vision;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class LimelightSource implements DetectionSource{
+public class LimelightSource implements DetectionSource {
     private final Limelight3A limelight;
 
     public LimelightSource(Limelight3A limelight, int pipeline) {
@@ -36,8 +35,7 @@ public class LimelightSource implements DetectionSource{
                     detection.getTargetXDegrees(),
                     detection.getTargetYDegrees(),
                     detection.getConfidence(),
-                    detection.getTargetArea()
-            ));
+                    detection.getTargetArea()));
         }
 
         return out;

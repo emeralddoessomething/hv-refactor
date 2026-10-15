@@ -1,7 +1,6 @@
 package org.hivevisionftc.vision;
 
 import androidx.annotation.NonNull;
-
 import java.util.Locale;
 
 /**

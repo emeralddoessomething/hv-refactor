@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import org.hivevisionftc.vision.BiobuzzClasses;
 import org.hivevisionftc.vision.Detection;
 import org.hivevisionftc.vision.DetectionSource;
 import org.hivevisionftc.vision.FieldPose;
@@ -72,8 +70,9 @@ class WeaverRouteTest {
 
     @Test
     void planWithoutAStartPoseSaysSo() {
-        assertThrows(IllegalStateException.class, () -> WeaverRoute.fromFetchPose()
-                .plan(Collections.singletonList(ballAt(60, 24)), null));
+        assertThrows(
+                IllegalStateException.class,
+                () -> WeaverRoute.fromFetchPose().plan(Collections.singletonList(ballAt(60, 24)), null));
     }
 
     @Test
@@ -285,5 +284,4 @@ class WeaverRouteTest {
         };
         return new HiveVision(source, new VisionConfig());
     }
-
 }
