@@ -92,8 +92,8 @@ public class HiveVision {
                 if (!allowedClasses.contains(detection.getBallClass())) continue; // Skip disallowed colors
                 if (!config.ignoreConfidence() && detection.getConfidence() < config.getMinConfidence())
                     continue; // Skip low confidence detections
-                if (config.getMaxStalenessMs() > getStalenessMs())
-                    continue; // Skip if the latest detections are too old
+                if (getStalenessMs() < 0 || getStalenessMs() > config.getMaxStalenessMs())
+                    continue; // Skip if the latest detections are missing or too old
 
                 detectionList.add(getAbsolutePosition(detection, robotPose));
             }
