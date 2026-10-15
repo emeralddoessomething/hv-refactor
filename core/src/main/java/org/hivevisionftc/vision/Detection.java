@@ -20,10 +20,10 @@ public class Detection {
         this.area = detection.area;
     }
 
-    public Detection(Detection detection, Pose newCords) {
+    public Detection(Detection detection, FieldPose newCords) {
         this.ballClass = detection.ballClass;
         this.x = newCords.getX();
-        this.y = newCords.getX();
+        this.y = newCords.getY();
         this.confidence = detection.confidence;
         this.area = detection.area;
     }

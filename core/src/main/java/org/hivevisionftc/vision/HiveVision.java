@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 
 public class HiveVision {
@@ -50,18 +51,41 @@ public class HiveVision {
         return allowedClasses;
     }
 
+    /** Creates an empty {@link DetectionList} bound to this vision instance; call {@code fetch(...)} to fill it. */
+    public DetectionList detections() {
+        return new DetectionList();
+    }
+
     public class DetectionList {
         private final List<Detection> detectionList;
-        private Pose robotPose;
+        private FieldPose robotPose;
         private DetectionList() {
             detectionList = new ArrayList<>();
+        }
+
+        // ─── Extension point ─────────────────────────────────────────────────────
+
+        /**
+         * Hands this list to {@code fn} and returns whatever it produces. This is how optional modules
+         * (e.g. the Weaver integration) add behaviour without the core depending on them:
+         * <pre>{@code
+         * PathResult path = vision.detections().fetch(pose).sortByDistance().with(WeaverRoute.from(pose));
+         * }</pre>
+         */
+        public <R> R with(Function<? super DetectionList, ? extends R> fn) {
+            return fn.apply(this);
+        }
+
+        /** The robot pose passed to the last {@code fetch(...)}, or {@code null} if never fetched. */
+        public FieldPose getRobotPose() {
+            return robotPose;
         }
 
         public DetectionList fetch(double robotX, double robotY) {
             List<Detection> detections = source.latest();
             if (detections == null) return this;
             if (!detections.isEmpty()) detectionList.clear();
-            robotPose = new Pose(robotX, robotY);
+            robotPose = new FieldPose(robotX, robotY);
 
             for (Detection detection : detections) {
                 if (!allowedClasses.contains(detection.getBallClass())) continue; //Skip disallowed colors
@@ -73,7 +97,7 @@ public class HiveVision {
            return this;
         }
 
-        public DetectionList fetch(Pose robotPose) {
+        public DetectionList fetch(FieldPose robotPose) {
             return fetch(robotPose.getX(), robotPose.getY());
         }
         // ─── Sorting ─────────────────────────────────────────────────────────────
@@ -141,30 +165,30 @@ public class HiveVision {
             return (config.getBallHeight() - config.getCamHeight()) / Math.tan(angleGoalRag);
         }
 
-        private Pose getRelativePose(double distance, double tx) {
+        private FieldPose getRelativePose(double distance, double tx) {
             double theta = Math.toRadians(tx);
 
             double deltaX = distance * Math.cos(theta) + config.getCamXOffset();
             double deltaY = -distance * Math.sin(theta) + config.getCamYOffset();
 
-            return new Pose(deltaX, deltaY);
+            return new FieldPose(deltaX, deltaY);
         }
 
-        private Pose getAbsolutePosition(Pose relativePose, Pose robotPose) {
-            double theta = robotPose.getHeadingRad();
+        private FieldPose getAbsolutePosition(FieldPose relativePose, FieldPose robotPose) {
+            double theta = robotPose.getHeading();
             double x = relativePose.getX() * Math.cos(theta) - relativePose.getY() * Math.sin(theta);
             double y = relativePose.getX() * Math.sin(theta) + relativePose.getY() * Math.cos(theta);
 
 
-            return new Pose(
+            return new FieldPose(
                     robotPose.getX() + x,
                     robotPose.getY() + y,
                     0);
         }
 
-        private Detection getAbsolutePosition(Detection detection, Pose robotPose) {
+        private Detection getAbsolutePosition(Detection detection, FieldPose robotPose) {
             double distance = getDistance(detection.getY());
-            Pose pose = getAbsolutePosition(getRelativePose(distance, detection.getX()), robotPose);
+            FieldPose pose = getAbsolutePosition(getRelativePose(distance, detection.getX()), robotPose);
             return new Detection(detection, pose);
         }
     }

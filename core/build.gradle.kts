@@ -24,6 +24,10 @@ android {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation("org.firstinspires.ftc:RobotCore:12.0.0")
     implementation("org.firstinspires.ftc:Hardware:12.0.0")
