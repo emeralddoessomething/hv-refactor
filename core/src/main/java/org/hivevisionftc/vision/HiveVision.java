@@ -149,7 +149,7 @@ public class HiveVision {
 
         public Detection getBiggest() {
             if (detectionList.isEmpty()) return null;
-            return sortBySize().detectionList.get(detectionList.size() - 1);
+            return sortBySize().detectionList.get(0);
         }
 
         /** Returns a copy of the current artifact list. */
