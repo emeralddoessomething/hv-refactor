@@ -2,7 +2,9 @@ package org.hivevisionftc.vision;
 
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -10,12 +12,12 @@ import java.util.function.Function;
 public class HiveVision {
     private final DetectionSource source;
     private final VisionConfig config;
-    private Set<BiobuzzClasses> allowedClasses;
+    private final Set<BiobuzzClasses> allowedClasses;
 
     public HiveVision(DetectionSource source, VisionConfig config) {
         this.source = source;
         this.config = config;
-        this.allowedClasses = Set.of(BiobuzzClasses.POLLEN, BiobuzzClasses.NECTAR_RED, BiobuzzClasses.NECTAR_BLUE);
+        this.allowedClasses = new HashSet<>(Arrays.asList(BiobuzzClasses.values()));
     }
 
     public HiveVision(Limelight3A limelight, VisionConfig config) {
@@ -32,7 +34,7 @@ public class HiveVision {
 
     public HiveVision setAllowedClasses(BiobuzzClasses... classes) {
         allowedClasses.clear();
-        allowedClasses = Set.of(classes);
+        allowedClasses.addAll(Arrays.asList(classes));
         return this;
     }
 
