@@ -24,12 +24,12 @@ public class VisionConfig {
     /**
      * Camera tilt angle below horizontal, in degrees.
      */
-    private double camPitchDeg = 25.0;
+    private double camPitchDeg = 0;
 
     /**
      * Camera lens height above floor, in inches.
      */
-    private double camHeight = 9.2;
+    private double camHeight = 0;
 
     /**
      * Ball center height above floor, in inches.
