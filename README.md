@@ -1,230 +1,157 @@
-# Hive Ball Chase
+# HiveVision
 
-Limelight 3A ball detection, target locking and chase drivers for FTC robots: a perception core
-(`BallTracker`), a no-odometry chase controller, an obstacle-avoiding Pedro Pathing + Marrow Weaver
-hybrid chaser (`BallChaseWeaver`), a one-line `BallHunt` and a fluent verb API (`BallWrangler`).
-Built to pick up BioBuzz game elements (`yellow_pollen` / `red_nectar` / `blue_nectar`) with a
-Limelight 3A SSD neural detector.
+Camera-based detection, target filtering, field positioning, and Weaver path routing library for FTC robots.
 
-Part of [Hive Vision](https://github.com/hivevisionftc/Hive-Vision) (model, training and calibration tooling).
+`HiveVision` turns Limelight 3A neural network detections into absolute field coordinates and generates optimal path routes for autonomous navigation. It is built natively for FTC game elements (such as `POLLEN`, `NECTAR_RED`, `NECTAR_BLUE`) using Limelight 3A SSD detectors and integrates seamlessly with [Pedro Pathing](https://github.com/pedropathing/core) and [Marrow Weaver](https://marrow.skeletonarmyftc.com/).
+
+---
+
+## Modules
+
+`HiveVision` is split into two lightweight artifacts:
+
+| Artifact | Description | Dependencies |
+|----------|-------------|--------------|
+| `org.hivevisionftc:core` | Perception pipeline, Limelight 3A integration, detection filtering, sorting, and camera-to-field coordinate projection. | FTC SDK (`RobotCore`, `Hardware`) |
+| `org.hivevisionftc:weaver` | Optional path routing module that converts detection lists into obstacle-avoiding [Marrow Weaver](https://marrow.skeletonarmyftc.com/) bezier paths. | `:core`, `Marrow core` |
+
+---
 
 ## Installation
 
-Pick the artifact that matches the Pedro Pathing version in your robot project. **Add exactly one.**
-
-| Artifact | FTC SDK | Pedro Pathing | Status |
-|----------|---------|---------------|--------|
-| `org.hivevisionftc:ball-chase-weaver` | 12.x | 3.x | **Current.** Marrow Weaver paths that route around obstacles; `ChaseDriver`/`PickupHandler` seams so it is not locked to one drivetrain or intake. |
-| `org.hivevisionftc:ball-chase` | 12.x (verified 12.0.0) | 3.x (verified 3.0.1) | **Archived.** `BallChaseFollower` is `@Deprecated`; kept building so mid-season teams are not broken. No new features. |
-| `org.hivevisionftc:ball-chase-legacy` | 11.x (verified 11.2.1) | 2.x (verified 2.1.2) | **Archived.** Has `HiveConfig` and `PickupConfirmer`. |
-
-> **Where BallChaseFollower went.** Straight-line travel can't plan around obstacles,
-> and the hybrid driver had no seam for another drivetrain, so development moved to
-> `ball-chase-weaver`. It keeps the same perception core and the same state machine,
-> replaces the TRAVEL leg with one cost-ordered [Marrow Weaver](https://github.com/Skeleton-Army/Marrow)
-> route through every remembered ball that bends around obstacle zones, and adds a
-> `ChaseDriver` adapter interface and a `PickupHandler`. `BallHunt` and every tracker
-> verb are unchanged.
-
-```gradle
-// TeamCode/build.gradle
-dependencies {
-    implementation 'org.hivevisionftc:ball-chase-weaver:1.0.0'
-}
-```
-
-The artifacts publish to Maven Central, which the FTC Gradle setup already includes. The library only
-compiles against the FTC SDK and Pedro Pathing (`compileOnly`), so your robot project supplies them;
-`ball-chase-weaver` also pulls in Marrow (Weaver path generation) for you.
-
-Verified against a stock
-[FtcRobotController](https://github.com/FIRST-Tech-Challenge/FtcRobotController) checkout
-(FTC SDK 12.0.0, AGP 8.13.2, Gradle 9.1.0): no repository edits, and copy-paste TeamCode OpModes
-live in [`docs/examples/`](docs/examples/). Full setup:
-[ball-chase-weaver/README.md](ball-chase-weaver/README.md).
-
-If you use other versions, compatibility is not guaranteed.
-
-> **Package change.** Classes used to live in `org.firstinspires.ftc.teamcode`. They are now in
-> `org.hivevisionftc.ballchase` (`...ballchase.wrapper` for the verb API). Update your imports.
-
-## Beta testing (before the artifact is on Central)
-
-The artifact is not on Maven Central yet, so testers install it from source. Send this section to
-whoever is testing — it is self-contained.
-
-**1. Publish the library locally** (needs JDK 17+ and the Android SDK, the same setup that builds
-FtcRobotController):
-
-```bash
-git clone https://github.com/sidhuharjas/hvtest.git
-cd hvtest
-./gradlew :ball-chase-weaver:deployLocal   # -> org.hivevisionftc:ball-chase-weaver:1.0.0 in ~/.m2
-```
-
-**2. Two edits in your FtcRobotController project.** `build.dependencies.gradle`:
-
-```gradle
-repositories {
-    mavenLocal()
-    mavenCentral()
-    google()
-}
-```
-
-`TeamCode/build.gradle`:
+Add the required dependencies to your `TeamCode/build.gradle`:
 
 ```gradle
 dependencies {
-    implementation project(':FtcRobotController')   // already there
-    implementation 'com.pedropathing:core:3.0.1'
-    implementation 'com.pedropathing:revhub:3.0.1'  // REV Hub drivetrain/localizer
-    implementation 'org.hivevisionftc:ball-chase-weaver:1.0.0'
+    // Core vision module
+    implementation 'org.hivevisionftc:core:1.0.0'
+
+    // Optional: Marrow Weaver route planning
+    implementation 'org.hivevisionftc:weaver:1.0.0'
 }
 ```
 
-**3. OpModes.** Copy [`docs/examples/`](docs/examples/) into TeamCode and tune
-`SampleFollowerFactory` for your robot (motor/encoder names, pod offsets, ticks-to-inches, hub
-orientation). Hardware names are `limelight` and `intake` — edit the OpModes if yours differ.
+The artifacts publish to Maven Central. Ensure `mavenCentral()` is included in your `repositories` block.
 
-**4. Camera.** Upload `best_limelight3a_ssd_mobilenetv2_300x300.tflite` + `labels.txt` (Hive Vision
-repo, `neural-net/weights/`) at `http://limelight.local:5801`: Pipeline Type **Neural Detector**,
-runtime engine **CPU**, input **300 x 300**, threshold **0.35 - 0.45**. Confirm colored boxes
-appear on the stream before running anything.
+---
 
-**5. Run.** `AutoBallHuntOpMode` first (the one-liner), then `ManualBallChaseOpMode` (the full
-loop) — add an obstacle with `hunt.addObstacle(new CircleZone(new Point(x, y), r))` to test
-avoidance.
+## Quickstart
 
-**Report back:**
-
-- a ✅/❌ for each state: `SCAN` → `TRAVEL` → `TURN` → `CHASE` → `PICKUP` (telemetry shows the state)
-- video of the run, especially whether the path visibly bends around the obstacle
-- every exception from the Driver Station, verbatim
-- field size, obstacle coordinates, and any tunables you had to change (the `BallChaseWeaver.*` statics)
-
-## Usage
-
-### Teleop (no odometry)
+### 1. Configure and Initialize Vision
 
 ```java
-BallTracker tracker = new BallTracker(limelight);
-tracker.setAllowedClasses(BallTracker.CLASSES_RED_BLUE);   // or CLASSES_ALL
+// Define camera geometry and detection thresholds
+VisionConfig config = new VisionConfig()
+        .camPitchDeg(25.0)          // Camera tilt angle below horizontal
+        .camHeight(9.2)             // Camera lens height above floor (inches)
+        .ballHeight(3.0)            // Game element center height above floor (inches)
+        .camXOffset(4.0)            // Camera forward offset from robot center (inches)
+        .camYOffset(0.0)            // Camera left offset from robot center (inches)
+        .minConfidence(0.44)        // Minimum detection confidence threshold
+        .maxStalenessMs(120)        // Max allowed data staleness (ms)
+        .pipeline(3)                // Limelight pipeline index
+        .pollingRateHz(150);        // Camera polling rate
 
-BallChaseController chase = new BallChaseController(tracker, lf, rf, lb, rb, intake);
-chase.setMaxPickups(3);
-chase.start();
-while (opModeIsActive() && !chase.isDone()) {
-    chase.update();
-    chase.addTelemetry(telemetry);
+// Initialize Limelight source & vision session
+Limelight3A limelight = hardwareMap.get(Limelight3A.class, "limelight");
+HiveVision vision = new HiveVision(limelight, config);
+
+// Optionally restrict allowed detection classes
+vision.setAllowedClasses(BiobuzzClasses.NECTAR_RED, BiobuzzClasses.NECTAR_BLUE);
+```
+
+### 2. Fetch and Query Detections
+
+```java
+// Fetch detections and project them to field coordinates given robot's current pose
+FieldPose robotPose = new FieldPose(follower.getPose().getX(), follower.getPose().getY(), follower.getPose().getHeading());
+
+// Query the closest detected element
+Detection target = vision.detections()
+        .fetch(robotPose)
+        .sortByDistance()
+        .getClosest();
+
+if (target != null) {
+    telemetry.addData("Target Class", target.getBallClass());
+    telemetry.addData("Target Field X", target.getX());
+    telemetry.addData("Target Field Y", target.getY());
 }
-chase.abort();
 ```
 
-### Auto with Pedro
+### 3. Generate Weaver Bezier Paths (Auto Routing)
 
 ```java
-// YOU own follower.update() - this class never calls it
-BallChaseWeaver hunt = new BallChaseWeaver(follower, tracker, intake);
-hunt.setAllowedClasses(BallTracker.CLASSES_RED_BLUE);
-hunt.addObstacle(new CircleZone(new Point(72, 72), 18));   // optional: route around it
-hunt.setMaxPickups(3); hunt.setTimeBudgetSec(20);
-hunt.start();
-while (opModeIsActive() && !hunt.isDone()) {
-    follower.update();
-    hunt.update();
-    hunt.addTelemetry(telemetry);
+// Convert detected elements directly into an obstacle-avoiding Weaver path result
+PathResult path = vision.detections()
+        .fetch(robotPose)
+        .sortByDistance()
+        .with(WeaverRoute.fromFetchPose()
+                .avoid(new CircleZone(new Point(72, 72), 18.0)) // Add obstacle zones
+                .maxTargets(4));                                // Limit path targets
+
+if (path != null) {
+    follower.follow(PedroPathingConverter.toPath(path));
 }
-hunt.abort();
 ```
 
-On the archived `ball-chase` artifact the same loop uses `BallChaseFollower`
-(straight-line travel, no obstacles).
+---
 
-### Auto, the one-liner
+## Calibration
 
-```java
-int picked = new BallHunt(follower, limelight, intake)
-        .reds().collect(2).within(20)
-        .go(this);          // owns follower.update(), streams telemetry, aborts cleanly
-```
+Accurate distance estimation and field projection require proper physical measurement of your camera mounting geometry. Refer to [docs/calibration.md](docs/calibration.md) for step-by-step measurement procedures and coordinate system conventions.
 
-Fluent options: `.reds()` `.blues()` `.yellows()` `.alliance()` (default) `.everything()` ·
-`.collect(n)` (≤0 = unlimited) · `.within(sec)` · `.avoid(zone)`.
+| Config Method | Description |
+|---------------|-------------|
+| `camPitchDeg(double)` | Downward tilt angle of the camera optic axis in degrees below horizontal. |
+| `camHeight(double)` | Distance from floor to center of camera lens (inches). |
+| `ballHeight(double)` | Distance from floor to center of target game element (inches). |
+| `camXOffset(double)` | Forward (+X) offset of camera lens relative to robot center (inches). |
+| `camYOffset(double)` | Left (+Y) offset of camera lens relative to robot center (inches, negative for right). |
+| `minConfidence(double)` | Confidence threshold for accepting detections (0.0 to 1.0). |
+| `maxStalenessMs(long)` | Maximum time in milliseconds before detection data is discarded. |
 
-Class-level reference (state machines, lock semantics, the verb API): [docs/MODULES.md](docs/MODULES.md).
+---
 
-## Calibrate before running
+## Documentation & Examples
 
-On `ball-chase-legacy` every tunable is a `public static` field in `HiveConfig`, read at point of use, so
-you can edit it from your own code or a config system (e.g. Bylazar Configurables) before starting a hunt.
-On `ball-chase-weaver` and `ball-chase` the same constants are fields on `BallTracker`,
-`BallChaseController`, `BallChaseWeaver` and `BallChaseFollower`. The measurement procedure and coordinate
-sign conventions are in [docs/calibration.md](docs/calibration.md).
+- **[MODULES.md](docs/MODULES.md)** — Complete API and class reference for `:core` and `:weaver`.
+- **[calibration.md](docs/calibration.md)** — Procedure for measuring camera offsets, pitch angles, and understanding coordinate frames.
+- **[weaver/README.md](weaver/README.md)** — Quick guide to using the `WeaverRoute` extension.
+- **[docs/examples/](docs/examples/)** — Sample OpModes demonstrating integration with Pedro Pathing.
 
-| Constant | Meaning |
-|----------|---------|
-| `CAM_PITCH_DEG`, `CAM_H`, `BALL_H` | Camera tilt below horizontal, lens height, ball-center height (inches). |
-| `CAM_X_OFFSET`, `CAM_Y_OFFSET` | Camera mount offset from robot center (forward +X, LEFT +Y, inches). |
-| `MIN_CONF`, `MAX_STALENESS_MS` | Detection gating. Staleness is in milliseconds; the 3A reports confidence 0-1. |
-| Class ids 0/1/2 | Must match your Limelight pipeline's label list. Nothing checks the model at runtime. |
-| `HFOV_DEG` / `VFOV_DEG` | Camera field of view, used for field projection. |
-| Drive/turn/coast gains, search/pickup timing | Everything the drivers read at point of use. |
+---
 
-## Project layout
-
-```
-ball-chase-weaver/    FTC 12 + Pedro 3 + Marrow Weaver artifact   (current)
-ball-chase/           FTC 12 + Pedro 3 artifact                    (archived)
-ball-chase-legacy/    FTC 11 + Pedro 2 artifact                    (archived)
-docs/                 MODULES.md (class reference), calibration.md
-```
-
-Each artifact is `src/main` = library, `src/test` = desktop suites (no robot, no camera).
-
-The robot-side OpModes from the original repo (`RobotTestBench`, `BallChaseControllerTest`,
-`TeleOpWorking`, `BallChaseOpMode`, the `older/` demos) are not part of the library. They remain in the
-[Hive-Vision repository](https://github.com/hivevisionftc/Hive-Vision/tree/main/ftc_ball_chase_lib).
-
-## Building and testing
+## Building and Testing
 
 ```bash
-./gradlew test               # desktop self-test suites (no robot, no camera)
-./gradlew assembleRelease    # AARs plus sources/javadoc jars
-./gradlew spotlessCheck      # formatting check (spotlessApply to format)
+# Run unit test suites (JVM-based, no camera required)
+./gradlew test
+
+# Format code according to Spotless Java rules
+./gradlew spotlessApply
+
+# Check code formatting
+./gradlew spotlessCheck
+
+# Build release library archives (AARs, sources, javadocs)
+./gradlew assembleRelease
 ```
 
-Needs a JDK 17+ and the Android SDK (`ANDROID_HOME` or `local.properties` with `sdk.dir`).
+---
 
 ## Publishing to Maven Central
 
-Publishing uses the [deployer](https://github.com/deepmedia/Deployer) plugin and the Central Portal,
-configured in the root `build.gradle.kts`.
+Publishing uses the Deployer plugin configured in `build.gradle.kts`.
 
-One-time setup:
+| Gradle Task | Description |
+|-------------|-------------|
+| `./gradlew deployLocal` | Publishes artifacts to Maven Local (`~/.m2`) for testing. |
+| `./gradlew deployNexusSnapshot` | Publishes snapshot builds to Sonatype Nexus. |
+| `./gradlew deployCentralPortal` | Publishes release builds to Maven Central. |
 
-1. Verify your namespace on the [Central Portal](https://central.sonatype.com/)
-   (`org.hivevisionftc` is the Maven group in the root `build.gradle.kts` — verify the matching
-   domain, or change `group` if you verify a different one).
-2. Fill in the developer/repository details at the top of `build.gradle.kts` (`DeployerExtension`).
-3. Create a GPG key and publish its public key to a keyserver.
-
-Provide the credentials as environment variables (or Gradle properties):
-
-| Secret | Meaning |
-|--------|---------|
-| `SIGNING_KEY` | Armored private GPG key |
-| `SIGNING_PASSWORD` | Passphrase of that key |
-| `CENTRAL_PORTAL_USER` / `CENTRAL_PORTAL_PASSWORD` | Central Portal user token pair |
-
-| Task | Does |
-|------|------|
-| `./gradlew deployLocal` | Publish all modules to Maven Local (try this first) |
-| `./gradlew deployNexusSnapshot` | Publish snapshots (version must end in `-SNAPSHOT`) |
-| `./gradlew deployCentralPortal` | Publish a release to Maven Central |
-
-Bump `libVersion` in `build.gradle.kts` before each release.
+---
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE) for details.

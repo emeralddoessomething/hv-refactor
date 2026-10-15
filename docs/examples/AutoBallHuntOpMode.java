@@ -1,40 +1,70 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.marrow.PedroPathingConverter;
+import com.skeletonarmy.marrow.weaver.PathResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import org.hivevisionftc.ballchase.BallHunt;
+import org.hivevisionftc.vision.BiobuzzClasses;
+import org.hivevisionftc.vision.FieldPose;
+import org.hivevisionftc.vision.HiveVision;
+import org.hivevisionftc.vision.VisionConfig;
+import org.hivevisionftc.vision.weaver.WeaverRoute;
 
 /**
- * The one-line autonomous: pick up two red balls within 25 seconds, obstacle-free.
- *
- * <p>Hardware names used: "limelight" (Limelight3A) and "intake" (DcMotor) -
- * match them to the Driver Station config.
+ * Autonomous OpMode demonstrating target detection and Weaver route generation using HiveVision.
  */
-@Autonomous(name = "Ball Hunt (BallHunt one-liner)")
+@Autonomous(name = "HiveVision Weaver Auto")
 public class AutoBallHuntOpMode extends LinearOpMode {
 
     @Override
     public void runOpMode() {
         Follower follower = SampleFollowerFactory.create(hardwareMap);
         Limelight3A limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
+
+        // Define vision configuration parameters
+        VisionConfig config = new VisionConfig()
+                .camPitchDeg(25.0)
+                .camHeight(9.2)
+                .ballHeight(3.0)
+                .camXOffset(4.0)
+                .camYOffset(0.0)
+                .minConfidence(0.44)
+                .maxStalenessMs(120);
+
+        // Initialize HiveVision session
+        HiveVision vision = new HiveVision(limelight, config);
+        vision.setAllowedClasses(BiobuzzClasses.NECTAR_RED, BiobuzzClasses.NECTAR_BLUE);
 
         telemetry.addData("Status", "Ready - press START");
         telemetry.update();
         waitForStart();
 
-        // go() owns follower.update() and the telemetry loop, and aborts cleanly.
-        int picked = new BallHunt(follower, limelight, intake)
-                .reds()
-                .collect(2)
-                .within(25)
-                .go(this);
+        if (opModeIsActive()) {
+            // Obtain current robot pose
+            FieldPose robotPose = new FieldPose(
+                    follower.getPose().getX(),
+                    follower.getPose().getY(),
+                    follower.getPose().getHeading());
 
-        telemetry.addData("Picked up", picked);
-        telemetry.update();
-        // ...then go score...
+            // Fetch detections and generate a Weaver path route
+            PathResult pathResult = vision.detections()
+                    .fetch(robotPose)
+                    .sortByDistance()
+                    .with(WeaverRoute.fromFetchPose().maxTargets(2));
+
+            if (pathResult != null) {
+                follower.follow(PedroPathingConverter.toPath(pathResult));
+                while (opModeIsActive() && follower.isBusy()) {
+                    follower.update();
+                    telemetry.addData("Status", "Following generated route");
+                    telemetry.update();
+                }
+            } else {
+                telemetry.addData("Status", "No targets detected");
+                telemetry.update();
+            }
+        }
     }
 }

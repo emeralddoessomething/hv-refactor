@@ -1,51 +1,80 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
+import com.pedropathing.marrow.PedroPathingConverter;
+import com.skeletonarmy.marrow.weaver.PathResult;
+import com.skeletonarmy.marrow.zones.CircleZone;
+import com.skeletonarmy.marrow.zones.Point;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import org.hivevisionftc.ballchase.BallChaseWeaver;
-import org.hivevisionftc.ballchase.BallTracker;
+import org.hivevisionftc.vision.BiobuzzClasses;
+import org.hivevisionftc.vision.Detection;
+import org.hivevisionftc.vision.FieldPose;
+import org.hivevisionftc.vision.HiveVision;
+import org.hivevisionftc.vision.VisionConfig;
+import org.hivevisionftc.vision.weaver.WeaverRoute;
 
 /**
- * The full BallChaseWeaver state machine when you need to keep your own loop:
- * scan, plan an obstacle-avoiding Weaver bezier, turn, chase on camera, pickup.
- *
- * <p>YOU own {@code follower.update()} - the hunt plans and drives, it never
- * spins the localization loop for you.
+ * Autonomous OpMode demonstrating continuous detection loop, obstacle avoidance,
+ * and path execution using HiveVision and WeaverRoute.
  */
-@Autonomous(name = "Ball Chase (BallChaseWeaver loop)")
+@Autonomous(name = "HiveVision Loop with Obstacles")
 public class ManualBallChaseOpMode extends LinearOpMode {
 
     @Override
     public void runOpMode() {
         Follower follower = SampleFollowerFactory.create(hardwareMap);
         Limelight3A limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
 
-        BallChaseWeaver hunt = new BallChaseWeaver(follower, limelight, intake);
-        hunt.setAllowedClasses(BallTracker.CLASSES_RED_BLUE);
-        hunt.setMaxPickups(3);
-        hunt.setTimeBudgetSec(25);
-        // Optional: route around a rig / static robot, field inches.
-        // hunt.addObstacle(new CircleZone(new Point(72, 72), 18.0));
+        VisionConfig config = new VisionConfig()
+                .camPitchDeg(25.0)
+                .camHeight(9.2)
+                .ballHeight(3.0)
+                .camXOffset(4.0)
+                .camYOffset(0.0)
+                .minConfidence(0.40)
+                .maxStalenessMs(120);
+
+        HiveVision vision = new HiveVision(limelight, config);
+        vision.setAllowedClasses(BiobuzzClasses.NECTAR_RED, BiobuzzClasses.NECTAR_BLUE);
 
         telemetry.addData("Status", "Ready - press START");
         telemetry.update();
         waitForStart();
 
-        hunt.start();
-        while (opModeIsActive() && !hunt.isDone()) {
+        while (opModeIsActive()) {
             follower.update();
-            hunt.update();
-            hunt.addTelemetry(telemetry);
+
+            FieldPose currentPose = new FieldPose(
+                    follower.getPose().getX(),
+                    follower.getPose().getY(),
+                    follower.getPose().getHeading());
+
+            // Fetch detections and build path avoiding an obstacle zone
+            HiveVision.DetectionList list = vision.detections().fetch(currentPose);
+
+            if (list.didDetect()) {
+                Detection closest = list.getClosest();
+                telemetry.addData("Closest Element", closest.getBallClass());
+                telemetry.addData("Field X", closest.getX());
+                telemetry.addData("Field Y", closest.getY());
+
+                if (!follower.isBusy()) {
+                    PathResult path = list.sortByDistance().with(
+                            WeaverRoute.fromFetchPose()
+                                    .avoid(new CircleZone(new Point(72, 72), 18.0))
+                                    .maxTargets(3));
+
+                    if (path != null) {
+                        follower.follow(PedroPathingConverter.toPath(path));
+                    }
+                }
+            } else {
+                telemetry.addData("Status", "Searching for targets...");
+            }
+
             telemetry.update();
         }
-        hunt.abort();
-
-        telemetry.addData("Pickups", hunt.getPickups());
-        telemetry.addData("Plans", hunt.getPlanCount());
-        telemetry.update();
     }
 }

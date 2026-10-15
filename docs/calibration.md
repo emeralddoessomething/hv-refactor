@@ -1,177 +1,130 @@
-# Calibration — measure the camera, and read the coordinates
+# Calibration — Measuring Camera Parameters and Coordinates
 
-Two things trip up every team that picks this library up cold: (1) how to
-actually measure the calibration constants with a ruler + tape, and (2) which
-coordinate system each sign belongs to. This page gives the literal procedure
-for the first and a diagram for the second.
+Accurate distance estimation and field-to-robot coordinate transforms depend on correct physical measurement of camera geometry and configuration parameters in `VisionConfig`.
 
-The constants below all live in one class: `HiveConfig` (`ball-chase-legacy`; on `ball-chase`
-and `ball-chase-weaver` the same fields are static members of `BallTracker` /
-`BallChaseController` / `BallChaseWeaver`)
-(fields `CAM_*`, `HFOV_DEG`, `VFOV_DEG`, `MIN_CONF`, `LOCK_*`, `CONFIRM_*`).
+---
 
-## What each constant means
+## Configuration Parameters (`VisionConfig`)
 
-| Constant | Meaning |
-|----------|---------|
-| `CAM_H` | camera **lens center** height above the floor, inches |
-| `BALL_H` | **center** of the game element above the floor, inches |
-| `CAM_PITCH_DEG` | camera optic axis tilt **below horizontal**, degrees |
-| `CAM_X_OFFSET` | camera **forward** of the robot center, inches |
-| `CAM_Y_OFFSET` | camera **left** of the robot center, inches (+ = left, − = right) |
-| `HFOV_DEG` / `VFOV_DEG` | horizontal / vertical field of view, degrees |
-| `MIN_CONF` | minimum detection confidence the tracker will accept |
+| Method | Description | Units |
+|--------|-------------|-------|
+| `camHeight(double)` | Distance from floor to center of camera lens | Inches |
+| `ballHeight(double)` | Distance from floor to center of target game element | Inches |
+| `camPitchDeg(double)` | Camera optic axis tilt angle **below horizontal** | Degrees |
+| `camXOffset(double)` | Camera lens position **forward** of robot reference center | Inches |
+| `camYOffset(double)` | Camera lens position **left** of robot reference center (+ left, − right) | Inches |
+| `minConfidence(double)` | Minimum detection confidence score to accept | 0.0 – 1.0 |
+| `maxStalenessMs(long)` | Maximum allowed detection data age | Milliseconds |
 
-## How to measure each one (literal procedure)
+---
 
-### Camera height — `CAM_H`
+## Physical Measurement Procedure
 
-Measure **floor → center of the camera lens**, not the top or bottom of the
-enclosure.
+> [!TIP]
+> **Use CAD Measurements When Available:** If your robot is modeled in CAD (such as Onshape, Fusion 360, or SOLIDWORKS), pull `camHeight`, `camPitchDeg`, `camXOffset`, and `camYOffset` directly from your CAD assembly. CAD measurements are typically significantly more accurate than manual tape/ruler measurements. Be sure to double-check against the physical robot to account for tile compression, sagging, or mounting tolerances.
+
+### 1. Camera Height (`camHeight`)
+Measure vertically from the **floor/field mat to the center of the camera lens**.
 
 ```text
        CAMERA
-          ●     ← measure to here
+          ●     ← Measure to lens center
           │
-          │ CAM_H
-──────────┴────────── floor
+          │ camHeight
+──────────┴────────── Floor / Mat
 ```
 
-If you can't reach the lens with the camera mounted, measure the floor → bottom
-of the mount and add the mount's own height.
-
-### Ball height — `BALL_H`
-
-Measure **floor → center of the ball**, not its top.
+### 2. Ball Height (`ballHeight`)
+Measure vertically from the **floor/field mat to the center of the target element**.
 
 ```text
        ●
-      /_\          ← center of the ball (the middle of its diameter)
-      │ BALL_H
-─────────── floor
+      /_\       ← Center of game element (half of total height)
+      │ ballHeight
+─────────── Floor / Mat
 ```
 
-For BioBuzz: `red_nectar` / `blue_nectar` / `yellow_pollen` all sit with their
-centers roughly the same height — measure one on the actual field mat, where
-you'll be picking them up.
-
-### Camera pitch — `CAM_PITCH_DEG`
-
-Measure the angle between the camera's optic axis and horizontal:
-put a level against the side of the camera and measure its downward angle.
+### 3. Camera Pitch Angle (`camPitchDeg`)
+Measure the downward tilt angle of the camera optic axis below horizontal. Place a digital protractor or angle gauge against the side of the camera housing.
 
 ```text
-          camera
+          Camera
             ●
              \
-              \  18°   ← CAM_PITCH_DEG (below horizontal)
+              \  25°   ← camPitchDeg (tilt below horizontal)
                \
-───────────────────────── horizontal
+───────────────────────── Horizontal
 ```
 
-A protractor on a level is plenty. Small pitch errors don't look bad on
-telemetry, but they shift the distance estimate with target position — steep
-mounts amplify the error.
-
-### Camera offsets — `CAM_X_OFFSET`, `CAM_Y_OFFSET`
-
-Measure from the robot's reference point (center of the drivetrain) to the
-camera center:
+### 4. Camera Mount Offsets (`camXOffset`, `camYOffset`)
+Measure from the robot's physical center (drivetrain center of rotation) to the camera lens center:
 
 ```text
-                 FRONT
+                 FRONT (+X)
                    ↑
-             camera ●
-                   │  CAM_X_OFFSET (forward, +)
+             Camera ●
+                   │  camXOffset (forward, +)
                    │
-             robot │ center
-                   ●
+             Robot ● Center
 ```
 
-Left/right: `CAM_Y_OFFSET` is **left-positive** from the robot's frame. If the
-camera is mounted to the robot's right, `CAM_Y_OFFSET` is negative.
+- **`camXOffset`**: Forward distance from robot center to camera lens (+ forward, − backward).
+- **`camYOffset`**: Left/right distance from robot center (+ left, − right).
 
-## Coordinate conventions (the diagram)
+---
 
-There are exactly four frames. Get each sign right once and the robot never
-"drives backwards on you":
+## Coordinate Systems and Conventions
 
-### 1. FTC / robot frame
+`HiveVision` works across three reference frames:
 
+### 1. Robot Reference Frame
 ```text
-            +Y (strafe LEFT)
+            +Y (Strafe LEFT)
               ↑
               │
- -X ←- -0-- ROBOT --0→ +X (forward)
+ -X ←--------- ROBOT ----------→ +X (Forward)
               │
               ↓
-            -Y (strafe RIGHT)
-
-          turn + = CLOCKWISE (top view)
+            -Y (Strafe RIGHT)
 ```
 
-### 2. Limelight camera frame (`tx` / `ty`)
-
+### 2. Limelight Camera Frame (`tx`, `ty`)
 ```text
       tx < 0           tx = 0           tx > 0
         \                |                /
          \               |               /
           \              |              /
-           ●─────────────●─────────────●   camera
+           ●─────────────●─────────────●   Camera Lens
 
    + ty = UP,  − ty = DOWN
 ```
 
-So: `tx > 0` = ball is to the robot's RIGHT → the chase turns clockwise to
-aim (a positive corrected steering command).
+When `tx > 0`, the target is to the **right** of camera center.
 
-### 3. Pedro Pathing frame
-
+### 3. Field Reference Frame (Pedro Pathing Compatible)
 ```text
-            +Y field (away from alliance wall)
+            +Y Field
               ↑
               │
-              │
- ─────────────┼─────────────→ +X field (right of your alliance)
-              robot
-
-          heading + = CCW (radians)
+ ─────────────┼─────────────→ +X Field
+            Robot
 ```
 
-The camera-relative ball position is rotated into this field frame using the
-robot's heading, so a ball "forward-right" in the robot frame stays
-consistent as the robot turns.
+`DetectionList.fetch(...)` converts camera-relative angles (`tx`, `ty`) into 3D range and projects them into this 2D Field Reference Frame using the robot's pose `(x, y, heading)`.
 
-### 4. Camera mount offsets
+---
 
-`CAM_X_OFFSET` / `CAM_Y_OFFSET` are the camera's position in the **robot
-frame** (forward = +X, left = +Y). Field projection (in `BallChaseFollower`
-and the wrapper's `projectBall`) adds the camera's offset, rotated by the
-heading, to the rotated ball position.
-
-## The golden rule
-
-```text
-tx sign  →  turn direction      (verify on the bench first)
-CAM_H / BALL_H / CAM_PITCH_DEG  →  distance truth (measure, don't guess)
-```
-
-Always do the three verification checks from the
-[quick start](https://github.com/hivevisionftc/Hive-Vision/blob/main/docs/quick_start.md#7-verify-the-three-things-that-break-you)
-(distance at 24 in, direction of `tx`, target lock) before an autonomous
-routine is allowed to move the robot.
-
-## Calibration values — an example, not a template
+## Code Example
 
 ```java
-HiveConfig.CAM_H         = 13.25;   // measured on YOUR robot
-HiveConfig.BALL_H        = 2.50;    // measured on the field mat
-HiveConfig.CAM_PITCH_DEG = 18.0;    // level + protractor
-HiveConfig.CAM_X_OFFSET  = 4.0;     // camera 4 in forward of center
-HiveConfig.CAM_Y_OFFSET  = -1.5;    // camera 1.5 in to the robot's right
-HiveConfig.HFOV_DEG      = 62.0;    // your lens spec
-HiveConfig.VFOV_DEG      = 48.0;    // your lens spec
+VisionConfig config = new VisionConfig()
+        .camPitchDeg(25.0)      // 25 degrees tilt below horizontal
+        .camHeight(9.25)        // Camera lens is 9.25" above floor
+        .ballHeight(3.0)        // Element center is 3.0" above floor
+        .camXOffset(4.5)        // Camera mounted 4.5" forward of robot center
+        .camYOffset(-1.2)       // Camera mounted 1.2" to the right of robot center
+        .minConfidence(0.40)    // 40% minimum confidence threshold
+        .maxStalenessMs(120)    // Discard data older than 120ms
+        .pipeline(3)            // Use Limelight pipeline 3
+        .pollingRateHz(150);    // Poll at 150 Hz
 ```
-
-These numbers are examples only. The single most common calibration mistake is
-copying values off another team's robot.
