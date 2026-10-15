@@ -32,8 +32,8 @@ subprojects {
 
     extensions.configure<io.deepmedia.tools.deployer.DeployerExtension> {
         projectInfo {
-            name.set("Hive Ball Chase (${project.name})")
-            description.set("Limelight 3A ball detection, target locking and chase drivers for FTC robots.")
+            name.set("HiveVision")
+            description.set("Camera based detection and positioning library for FTC.")
             url.set("https://github.com/hivevisionftc/Hive-Vision.git")
             scm.fromGithub("hivevisionftc", "Hive-Vison")
             developer("Hive Vision", "hivevisionftc@gmail.com")
