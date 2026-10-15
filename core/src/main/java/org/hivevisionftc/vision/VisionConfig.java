@@ -69,6 +69,11 @@ public class VisionConfig {
     private int pipeline = 3;
 
     /**
+     * The polling rate of the camera, in Hz.
+     */
+    private int pollingRateHz = 150;
+
+    /**
      * Returns the camera tilt angle below horizontal in degrees.
      *
      * @return the camera tilt in degrees
@@ -248,13 +253,31 @@ public class VisionConfig {
         return this;
     }
 
+    /**
+     * Returns the polling rate of the camera, in Hz.
+     * @return polling rate in hz
+     */
+    public int getPollingRateHz() {
+        return this.pollingRateHz;
+    }
+
+    /**
+     * Sets the polling rate of the camera, in Hz.
+     * @param v polling rate
+     * @return this, for chaining
+     */
+    public VisionConfig pollingRateHz(int v) {
+        this.pollingRateHz = v;
+        return this;
+    }
+
     @NonNull
     @Override
     public String toString() {
         return String.format(
                 Locale.ROOT,
                 "VisionConfig(camPitchDeg=%.3f, camHeight=%.3f, ballHeight=%.3f, camXOffset=%.3f, camYOffset=%.3f, "
-                        + "maxStalenessMs=%d, minConfidence=%.3f, ignoreConfidence=%b, pipeline=%d)",
+                        + "maxStalenessMs=%d, minConfidence=%.3f, ignoreConfidence=%b, pipeline=%d, pollingRateHz=%d)",
                 camPitchDeg,
                 camHeight,
                 ballHeight,
@@ -263,6 +286,7 @@ public class VisionConfig {
                 maxStalenessMs,
                 minConfidence,
                 ignoreConfidence,
-                pipeline);
+                pipeline,
+                pollingRateHz);
     }
 }

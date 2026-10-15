@@ -19,7 +19,7 @@ public class HiveVision {
     }
 
     public HiveVision(Limelight3A limelight, VisionConfig config) {
-        this(new LimelightSource(limelight, config.getPipeline()), config);
+        this(new LimelightSource(limelight, config.getPipeline(), config.getPollingRateHz()), config);
     }
 
     public List<Detection> getRawDetections() {

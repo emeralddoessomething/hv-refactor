@@ -10,9 +10,10 @@ import java.util.List;
 public class LimelightSource implements DetectionSource {
     private final Limelight3A limelight;
 
-    public LimelightSource(Limelight3A limelight, int pipeline) {
+    public LimelightSource(Limelight3A limelight, int pipeline, int pollRateHz) {
         this.limelight = limelight;
         this.limelight.pipelineSwitch(pipeline);
+        this.limelight.setPollRateHz(pollRateHz);
         this.limelight.start();
     }
 
