@@ -86,16 +86,18 @@ public class HiveVision {
             // Clear list to avoid stale data
             detectionList.clear();
 
+            long staleness = getStalenessMs();
+            if (staleness < 0 || staleness > config.getMaxStalenessMs()) {
+                return this; // Return empty list if new data is too old
+            }
+
             List<Detection> detections = source.latest();
-            if (!detections.isEmpty()) detectionList.clear();
             robotPose = new FieldPose(robotX, robotY);
 
             for (Detection detection : detections) {
                 if (!allowedClasses.contains(detection.getBallClass())) continue; // Skip disallowed colors
                 if (!config.ignoreConfidence() && detection.getConfidence() < config.getMinConfidence())
                     continue; // Skip low confidence detections
-                if (getStalenessMs() < 0 || getStalenessMs() > config.getMaxStalenessMs())
-                    continue; // Skip if the latest detections are missing or too old
 
                 detectionList.add(getAbsolutePosition(detection, robotPose));
             }
