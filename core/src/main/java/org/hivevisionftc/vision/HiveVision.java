@@ -83,8 +83,10 @@ public class HiveVision {
         }
 
         public DetectionList fetch(double robotX, double robotY) {
+            // Clear list to avoid stale data
+            detectionList.clear();
+
             List<Detection> detections = source.latest();
-            if (detections == null) return this;
             if (!detections.isEmpty()) detectionList.clear();
             robotPose = new FieldPose(robotX, robotY);
 
