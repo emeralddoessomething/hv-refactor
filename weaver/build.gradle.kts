@@ -39,6 +39,7 @@ dependencies {
     // Supplied by the robot project at runtime. Core's HiveVision references Limelight3A.
     compileOnly("org.firstinspires.ftc:RobotCore:12.0.0")
     compileOnly("org.firstinspires.ftc:Hardware:12.0.0")
+    implementation("androidx.annotation:annotation:1.6.0")
 
     testImplementation("org.firstinspires.ftc:RobotCore:12.0.0") { isTransitive = false }
     testImplementation("org.firstinspires.ftc:Hardware:12.0.0") { isTransitive = false }
