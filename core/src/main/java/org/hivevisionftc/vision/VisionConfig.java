@@ -1,292 +1,172 @@
 package org.hivevisionftc.vision;
 
-import androidx.annotation.NonNull;
-import java.util.Locale;
-
 /**
- * Combined configuration for camera geometry and vision detection filtering.
- * <p>
- * Example usage:
- * <pre>{@code
- * VisionConfig config = new VisionConfig()
- *         .camPitchDeg(25.0)
- *         .camH(9.2)
- *         .ballH(3.0)
- *         .camXOffset(0.0)
- *         .camYOffset(0.0)
- *         .maxStalenessMs(120)
- *         .minConfidence(0.44);
- * }</pre>
+ * Vision configuration, which includes camera geometry and a smattering of other settings (min confidence, max staleness).
  */
 public class VisionConfig {
-    // --- Camera Geometry ---
+    /**
+     * Pitch of the camera lens, in degrees, from the horizontal horizon (parallel to the ground).
+     * <p>
+     * If your camera is pitched up, you will input a positive number. If your camera is pitched down, you will input a negative number.
+     */
+    private double cameraPitchDeg = 0;
 
     /**
-     * Camera tilt angle below horizontal, in degrees.
+     * Height of the camera lens, in inches, from the ground.
+     * <p>
+     * If your camera is... above the ground... this number will be positive. If your camera is underground (???) this number will be negative.
      */
-    private double camPitchDeg = 0;
+    private double cameraHeightIn = 0;
 
     /**
-     * Camera lens height above floor, in inches.
+     * Offset of the camera lens, in inches, from the center of the robot (forwards and backwards).
+     * <p>
+     * If your camera is mounted on the front of the bot, this number will be positive. If your camera is mounted on the rear of the bot, this number will be negative.
      */
-    private double camHeight = 0;
+    private double cameraForwardIn = 0;
 
     /**
-     * Ball center height above floor, in inches.
+     * Offset of the camera lens, in inches, from the center of the robot (left and right)
+     * <p>
+     * If your camera is mounted left from the center of the bot, this number will be positive. If your camera is mounted to the right of the center of the bot, this number will be negative.
      */
-    private double ballHeight = 3.0;
+    private double cameraLeftIn = 0;
 
     /**
-     * Camera offset forward of robot center, in inches (mount offset).
+     * The max staleness of the detections, in milliseconds.
+     * <p>
+     * 'staleness' represents the amount of time from the last time vision updated its detections. This means that if the last time vision processed an image was 100ms ago, then 'staleness', or how stale a detection is, would me 100ms.
      */
-    private double camXOffset = 0.0;
+    private double maxStalenessMs = 1000;
 
     /**
-     * Camera offset left of robot center, in inches; negative values indicate right offset.
+     * The minimum amount of confidence a detection needs to have to be classified.
+     * <p>
+     * HEY! If you're using a limelight, you may want to check the confidence threshold you have set in the limelight webpage. If its too low, then the data sent to process (on the control hub) may not see a detection because the limelight is omitting it, even if you have the min confidence in here set to something really low, like zero.
+     * <p>
+     * 'confidence' is a decimal from [0,1] that represents how confident the neural model is that what it's detecting is what it thinks it is. Say its trying to detect a ball, if it is absolutely sure what it sees is a ball, confidence will be very high (eg. 0.90), while if it's not so sure, it may be lower (eg. 0.20)
      */
-    private double camYOffset = 0.0;
-
-    // --- Detection Filtering ---
-
-    /**
-     * Maximum allowed staleness for detection data, in milliseconds.
-     */
-    private long maxStalenessMs = 120;
+    private double minConfidence = 0.5;
 
     /**
-     * Minimum detection confidence threshold (range 0.0 to 1.0 or 0.0 to 100.0 depending on firmware).
+     * The pipeline to use, from [0,7].
+     * <p>
+     * HEY! This applies to Limelights only!
      */
-    private double minConfidence = 0.44;
+    private int limelightPipeline = 0;
 
     /**
-     * Whether to ignore confidence when filtering detections.
+     * The polling rate, in Hz (or 1/s), from [1,250].
+     * <p>
+     * HEY! This applies to limelights only!
+     * <p>
+     * 'polling rate' refers to how often the control hub requests new data from the limelight.
      */
-    private boolean ignoreConfidence = false;
+    private int limelightPollingRateHz = 100;
 
-    /**
-     * The camera pipeline to use.
-     */
-    private int pipeline = 3;
-
-    /**
-     * The polling rate of the camera, in Hz.
-     */
-    private int pollingRateHz = 150;
-
-    /**
-     * Returns the camera tilt angle below horizontal in degrees.
-     *
-     * @return the camera tilt in degrees
-     */
-    public double getCamPitchDeg() {
-        return camPitchDeg;
+    // getter setters
+    public double getCameraPitchDeg() {
+        return cameraPitchDeg;
     }
 
-    /**
-     * Sets the camera tilt angle below horizontal in degrees.
-     *
-     * @param v camera tilt in degrees
-     * @return this config, for chaining
-     */
-    public VisionConfig camPitchDeg(double v) {
-        this.camPitchDeg = v;
-        return this;
+    public void setCameraPitchDeg(double cameraPitchDeg) {
+        this.cameraPitchDeg = cameraPitchDeg;
     }
 
-    /**
-     * Returns the camera lens height above floor in inches.
-     *
-     * @return the camera height in inches
-     */
-    public double getCamHeight() {
-        return camHeight;
+    public double getCameraHeightIn() {
+        return cameraHeightIn;
     }
 
-    /**
-     * Sets the camera lens height above floor in inches.
-     *
-     * @param v camera height in inches
-     * @return this config, for chaining
-     */
-    public VisionConfig camHeight(double v) {
-        this.camHeight = v;
-        return this;
+    public void setCameraHeightIn(double cameraHeightIn) {
+        this.cameraHeightIn = cameraHeightIn;
     }
 
-    /**
-     * Returns the ball center height above floor in inches.
-     *
-     * @return the ball height in inches
-     */
-    public double getBallHeight() {
-        return ballHeight;
+    public double getCameraForwardIn() {
+        return cameraForwardIn;
     }
 
-    /**
-     * Sets the ball center height above floor in inches.
-     *
-     * @param v ball height in inches
-     * @return this config, for chaining
-     */
-    public VisionConfig ballHeight(double v) {
-        this.ballHeight = v;
-        return this;
+    public void setCameraForwardIn(double cameraForwardIn) {
+        this.cameraForwardIn = cameraForwardIn;
     }
 
-    /**
-     * Returns the camera forward offset from robot center in inches.
-     *
-     * @return the camera X offset in inches
-     */
-    public double getCamXOffset() {
-        return camXOffset;
+    public double getCameraLeftIn() {
+        return cameraLeftIn;
     }
 
-    /**
-     * Sets the camera forward offset from robot center in inches.
-     *
-     * @param v camera X offset in inches
-     * @return this config, for chaining
-     */
-    public VisionConfig camXOffset(double v) {
-        this.camXOffset = v;
-        return this;
+    public void setCameraLeftIn(double cameraLeftIn) {
+        this.cameraLeftIn = cameraLeftIn;
     }
 
-    /**
-     * Returns the camera left offset from robot center in inches.
-     *
-     * @return the camera Y offset in inches
-     */
-    public double getCamYOffset() {
-        return camYOffset;
-    }
-
-    /**
-     * Sets the camera left offset from robot center in inches (negative for right).
-     *
-     * @param v camera Y offset in inches
-     * @return this config, for chaining
-     */
-    public VisionConfig camYOffset(double v) {
-        this.camYOffset = v;
-        return this;
-    }
-
-    /**
-     * Returns the maximum allowed staleness for detection data in milliseconds.
-     *
-     * @return the max staleness in milliseconds
-     */
-    public long getMaxStalenessMs() {
+    public double getMaxStalenessMs() {
         return maxStalenessMs;
     }
 
-    /**
-     * Sets the maximum allowed staleness for detection data in milliseconds.
-     *
-     * @param v max staleness in milliseconds
-     * @return this config, for chaining
-     */
-    public VisionConfig maxStalenessMs(long v) {
-        this.maxStalenessMs = v;
-        return this;
+    public void setMaxStalenessMs(double maxStalenessMs) {
+        this.maxStalenessMs = maxStalenessMs;
     }
 
-    /**
-     * Returns the minimum detection confidence threshold.
-     *
-     * @return the minimum confidence threshold
-     */
     public double getMinConfidence() {
         return minConfidence;
     }
 
-    /**
-     * Sets the minimum detection confidence threshold.
-     *
-     * @param v minimum confidence threshold
-     * @return this config, for chaining
-     */
-    public VisionConfig minConfidence(double v) {
-        this.minConfidence = v;
+    public void setMinConfidence(double minConfidence) {
+        this.minConfidence = minConfidence;
+    }
+
+    public int getLimelightPipeline() {
+        return limelightPipeline;
+    }
+
+    public void setLimelightPipeline(int limelightPipeline) {
+        this.limelightPipeline = limelightPipeline;
+    }
+
+    public int getLimelightPollingRateHz() {
+        return limelightPollingRateHz;
+    }
+
+    public void setLimelightPollingRateHz(int limelightPollingRateHz) {
+        this.limelightPollingRateHz = limelightPollingRateHz;
+    }
+
+    // builder
+    public VisionConfig cameraPitchDeg(double cameraPitchDeg) {
+        this.cameraPitchDeg = cameraPitchDeg;
         return this;
     }
 
-    /**
-     * Returns whether to ignore confidence when filtering detections.
-     *
-     * @return whether to ignore confidence
-     */
-    public boolean ignoreConfidence() {
-        return this.ignoreConfidence;
-    }
-
-    /**
-     * Sets whether to ignore confidence when filtering detections.
-     *
-     * @param v whether to ignore or not
-     * @return this config, for chaining
-     */
-    public VisionConfig ignoreConfidence(boolean v) {
-        this.ignoreConfidence = v;
+    public VisionConfig cameraHeightIn(double cameraHeightIn) {
+        this.cameraHeightIn = cameraHeightIn;
         return this;
     }
 
-    /**
-     * Returns the camera pipeline to use.
-     *
-     * @return camera pipeline
-     */
-    public int getPipeline() {
-        return this.pipeline;
-    }
-
-    /**
-     * Sets the camera pipeline to use.
-     *
-     * @param v camera pipeline to use
-     * @return this
-     */
-    public VisionConfig pipeline(int v) {
-        this.pipeline = v;
+    public VisionConfig cameraForwardIn(double cameraForwardIn) {
+        this.cameraForwardIn = cameraForwardIn;
         return this;
     }
 
-    /**
-     * Returns the polling rate of the camera, in Hz.
-     * @return polling rate in hz
-     */
-    public int getPollingRateHz() {
-        return this.pollingRateHz;
-    }
-
-    /**
-     * Sets the polling rate of the camera, in Hz.
-     * @param v polling rate
-     * @return this, for chaining
-     */
-    public VisionConfig pollingRateHz(int v) {
-        this.pollingRateHz = v;
+    public VisionConfig cameraLeftIn(double cameraLeftIn) {
+        this.cameraLeftIn = cameraLeftIn;
         return this;
     }
 
-    @NonNull
-    @Override
-    public String toString() {
-        return String.format(
-                Locale.ROOT,
-                "VisionConfig(camPitchDeg=%.3f, camHeight=%.3f, ballHeight=%.3f, camXOffset=%.3f, camYOffset=%.3f, "
-                        + "maxStalenessMs=%d, minConfidence=%.3f, ignoreConfidence=%b, pipeline=%d, pollingRateHz=%d)",
-                camPitchDeg,
-                camHeight,
-                ballHeight,
-                camXOffset,
-                camYOffset,
-                maxStalenessMs,
-                minConfidence,
-                ignoreConfidence,
-                pipeline,
-                pollingRateHz);
+    public VisionConfig maxStalenessMs(double maxStalenessMs) {
+        this.maxStalenessMs = maxStalenessMs;
+        return this;
+    }
+
+    public VisionConfig minConfidence(double minConfidence) {
+        this.minConfidence = minConfidence;
+        return this;
+    }
+
+    public VisionConfig limelightPipeline(int limelightPipeline) {
+        this.limelightPipeline = limelightPipeline;
+        return this;
+    }
+
+    public VisionConfig limelightPollingRateHz(int limelightPollingRateHz) {
+        this.limelightPollingRateHz = limelightPollingRateHz;
+        return this;
     }
 }
