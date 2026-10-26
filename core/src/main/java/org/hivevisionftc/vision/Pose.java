@@ -1,17 +1,17 @@
 package org.hivevisionftc.vision;
 
-public class FieldPose {
+public class Pose {
     private final double x;
     private final double y;
     private final double heading;
 
-    public FieldPose(double x, double y, double heading) {
+    public Pose(double x, double y, double heading) {
         this.x = x;
         this.y = y;
         this.heading = heading;
     }
 
-    public FieldPose(double x, double y) {
+    public Pose(double x, double y) {
         this(x, y, 0);
     }
 

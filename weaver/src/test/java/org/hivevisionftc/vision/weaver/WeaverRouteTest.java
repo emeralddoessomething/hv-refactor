@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import org.hivevisionftc.vision.Detection;
 import org.hivevisionftc.vision.DetectionSource;
-import org.hivevisionftc.vision.FieldPose;
+import org.hivevisionftc.vision.Pose;
 import org.hivevisionftc.vision.HiveVision;
 import org.hivevisionftc.vision.VisionConfig;
 import org.junit.jupiter.api.AfterEach;
@@ -38,7 +38,7 @@ import org.junit.jupiter.api.Test;
  * {@code DetectionList.with(...)} chain.
  */
 class WeaverRouteTest {
-    private static final FieldPose START = new FieldPose(24, 24, 0.0);
+    private static final Pose START = new Pose(24, 24, 0.0);
 
     /** An obstacle sitting 3" off the straight line from START to (35, 24). */
     private static final Point OBSTACLE_CENTRE = new Point(30, 27);
@@ -212,7 +212,7 @@ class WeaverRouteTest {
     @Test
     void theChainPlansFromTheFetchPoseWhenNoStartIsGiven() {
         HiveVision vision = visionSeeing(new Detection(1, 0, 10, 0.9, 1));
-        FieldPose robot = new FieldPose(72, 72, 0.0);
+        Pose robot = new Pose(72, 72, 0.0);
 
         PathResult plan = vision.detections().fetch(robot).with(WeaverRoute.fromFetchPose());
 
@@ -228,8 +228,8 @@ class WeaverRouteTest {
         HiveVision vision = visionSeeing(new Detection(1, 0, 10, 0.9, 1));
 
         PathResult plan = vision.detections()
-                .fetch(new FieldPose(72, 72, 0.0))
-                .with(WeaverRoute.from(new FieldPose(50, 72, 0.0)));
+                .fetch(new Pose(72, 72, 0.0))
+                .with(WeaverRoute.from(new Pose(50, 72, 0.0)));
 
         assertNotNull(plan);
         Point first = plan.getPath().getSegments().get(0).sample(5).get(0);
@@ -252,7 +252,7 @@ class WeaverRouteTest {
 
     /** A detection already in field coordinates, the way {@code fetch(...)} leaves them. */
     private static Detection ballAt(double x, double y) {
-        return new Detection(new Detection(1, 0, 0, 0.9, 1), new FieldPose(x, y));
+        return new Detection(new Detection(1, 0, 0, 0.9, 1), new Pose(x, y));
     }
 
     /** Field-frame detections from a flat x,y,x,y... list. */
@@ -276,7 +276,7 @@ class WeaverRouteTest {
         DetectionSource source = new DetectionSource() {
             @NonNull
             @Override
-            public List<Detection> latest() {
+            public List<Detection> fetchLatestDetections() {
                 return list;
             }
 

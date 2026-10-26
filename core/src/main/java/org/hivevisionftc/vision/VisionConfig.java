@@ -40,7 +40,7 @@ public class VisionConfig {
     private double maxStalenessMs = 1000;
 
     /**
-     * The minimum amount of confidence a detection needs to have to be classified.
+     * The minimum amount of confidence a detection needs to have to be classified. This WILL BE IGNORED for limelights.
      * <p>
      * HEY! If you're using a limelight, you may want to check the confidence threshold you have set in the limelight webpage. If its too low, then the data sent to process (on the control hub) may not see a detection because the limelight is omitting it, even if you have the min confidence in here set to something really low, like zero.
      * <p>

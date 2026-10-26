@@ -11,7 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 import org.hivevisionftc.vision.Detection;
-import org.hivevisionftc.vision.FieldPose;
+import org.hivevisionftc.vision.Pose;
 import org.hivevisionftc.vision.HiveVision;
 
 /**
@@ -32,19 +32,19 @@ import org.hivevisionftc.vision.HiveVision;
  * <p>The list must already hold field-frame positions (that is what {@code fetch(...)} produces).
  */
 public final class WeaverRoute implements Function<HiveVision.DetectionList, PathResult> {
-    private FieldPose start;
-    private FieldPose end;
+    private Pose start;
+    private Pose end;
     private final List<Zone> obstacles;
     private int maxTargets;
     private boolean ordered = false;
 
-    private WeaverRoute(FieldPose start) {
+    private WeaverRoute(Pose start) {
         this.start = start;
         obstacles = new ArrayList<>();
     }
 
     /** Starts the route at {@code start} (field inches, heading radians). */
-    public static WeaverRoute from(FieldPose start) {
+    public static WeaverRoute from(Pose start) {
         if (start == null) throw new IllegalArgumentException("start must not be null");
         return new WeaverRoute(start);
     }
@@ -97,7 +97,7 @@ public final class WeaverRoute implements Function<HiveVision.DetectionList, Pat
      * @param end the destination pose
      * @return this
      */
-    public WeaverRoute end(FieldPose end) {
+    public WeaverRoute end(Pose end) {
         this.end = end;
         return this;
     }
@@ -129,7 +129,7 @@ public final class WeaverRoute implements Function<HiveVision.DetectionList, Pat
      * @return the planned route, or {@code null} when there are no detections
      * @throws IllegalStateException if {@code from} is {@code null}
      */
-    public PathResult plan(List<Detection> fieldDetections, FieldPose from) {
+    public PathResult plan(List<Detection> fieldDetections, Pose from) {
         if (fieldDetections.isEmpty()) return null;
         if (from == null) {
             throw new IllegalStateException(

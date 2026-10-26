@@ -1,50 +1,90 @@
 package org.hivevisionftc.vision;
 
-public class Detection {
-    private final BiobuzzClasses ballClass;
-    private final double x, y, confidence, area;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 
-    public Detection(int classId, double txDeg, double tyDeg, double confidence, double area) {
-        this.ballClass = BiobuzzClasses.fromId(classId);
-        this.x = txDeg;
-        this.y = tyDeg;
+public class Detection {
+    private Pose pose;
+    private double tx;
+    private double ty;
+    private double confidence;
+    private double area;
+    private int classId;
+    private String className;
+
+    public Detection(Pose robotPose, VisionConfig visionConfig, double tx, double ty, double confidence, double area) {
+        this.tx = tx;
+        this.ty = ty;
         this.confidence = confidence;
         this.area = area;
+        pose = findDetectionPose(robotPose, visionConfig, tx, ty);
+        // todo - class id and class name, does visionPortal probably spits out something different... enums? idk later someone(me) problem
     }
 
-    public Detection(Detection detection) {
-        this.ballClass = detection.ballClass;
-        this.x = detection.x;
-        this.y = detection.y;
-        this.confidence = detection.confidence;
-        this.area = detection.area;
+    public Detection(Pose robotPose, VisionConfig visionConfig, LLResultTypes.DetectorResult detectorResult) {
+        tx = detectorResult.getTargetXDegrees();
+        ty = detectorResult.getTargetYDegrees();
+        confidence = detectorResult.getConfidence();
+        area = detectorResult.getTargetArea();
+        pose = findDetectionPose(robotPose, visionConfig, detectorResult);
+        classId = detectorResult.getClassId();
+        className = detectorResult.getClassName();
     }
 
-    public Detection(Detection detection, FieldPose newCords) {
-        this.ballClass = detection.ballClass;
-        this.x = newCords.getX();
-        this.y = newCords.getY();
-        this.confidence = detection.confidence;
-        this.area = detection.area;
+
+
+    public Pose getPose() {
+        return pose;
     }
 
-    public BiobuzzClasses getBallClass() {
-        return ballClass;
+    public void setPose(Pose pose) {
+        this.pose = pose;
     }
 
-    public double getX() {
-        return x;
+    public double getTx() {
+        return tx;
     }
 
-    public double getY() {
-        return y;
+    public void setTx(double tx) {
+        this.tx = tx;
+    }
+
+    public double getTy() {
+        return ty;
+    }
+
+    public void setTy(double ty) {
+        this.ty = ty;
     }
 
     public double getConfidence() {
         return confidence;
     }
 
+    public void setConfidence(double confidence) {
+        this.confidence = confidence;
+    }
+
     public double getArea() {
         return area;
+    }
+
+    public void setArea(double area) {
+        this.area = area;
+    }
+
+    public int getClassId() {
+        return classId;
+    }
+
+    public void setClassId(int classId) {
+        this.classId = classId;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
     }
 }
